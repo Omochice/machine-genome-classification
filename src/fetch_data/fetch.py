@@ -10,16 +10,20 @@ class OrganelleFetchCliant:
     """オルガネラデータベース(https://www.ncbi.nlm.nih.gov/genome/browse#!/organelles/)で
     取得したcsvをもとにgenbankからデータをfetchするクラス
     """
-    def __init__(self, limit: int = 1000, column_title: str = "Replicons") -> None:
+    def __init__(self, n_once: int = 1000, column_title: str = "Replicons") -> None:
         """1度のアクセスで何件を取得するか初期設定
 
         Args:
-            limit (int): 1度のアクセスで何件を取得するか. Defaults to 1000.
+            n_once (int): 1度のアクセスで何件を取得するか. Defaults to 1000.
             columns_title: Accession番号が書いてある列名. Degaults to "Replicons".
         """
-        self.limit = limit
-        self.use_column_title = "Replicons"
-        Entrez.email = os.environ["email"]
+        self.n_once = n_once
+        self.use_column_title = column_title
+        try:
+            Entrez.email = os.environ["email"]
+        except KeyError as e:
+            print("環境変数に'email'がないようです.")
+            print("pipenvを使用している場合 .envファイルに email='<your email address>'を記入してください.")
 
     def fetch(self, source: Path, dst: Path) -> None:
         """csvファイルをもとにGenbankからデータを取得する
@@ -36,8 +40,8 @@ class OrganelleFetchCliant:
 
         # データの取得
         n_records = len(records)
-        for i in range(0, n_records, self.limit):
-            queries = records[i:i + 1000]
+        for i in range(0, n_records, self.n_once):
+            queries = records[i:i + self.n_once]
             with Entrez.efetch(db="nucleotide",
                                id=queries,
                                rettype="gb",
