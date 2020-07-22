@@ -39,9 +39,10 @@ class TaxonFetchCliant:
             for index, (res_ncbi, res_gnr) in enumerate(
                     zip(fetch_taxon_from_NCBI(taxon_ids), fetch_taxon_from_GNR(names))):
                 taxon = {**{"NCBI Taxonomy": res_ncbi}, **res_gnr}
-                results[use_pathes[index].name] = {
+                stem = use_pathes[index].stem
+                results[stem] = {
                     "binomial_name": names[index],
-                    "accession": use_pathes[index].stem,
+                    "accession": stem,
                     "taxon": taxon
                 }
             # 1000件取得したらファイルに書き出す
@@ -61,15 +62,16 @@ class TaxonFetchCliant:
         valids = []
         reasons = {"not_complete_genome": [], "mongrel": [], "have_no_seq": []}
         for creature in creatures:
+            stem = creature.stem
             for record in SeqIO.parse(creature, "genbank"):
                 title = record.description
                 creature_name = record.annotations["organism"]
                 if "complete genome" not in title:    # complete genome ではない
-                    reasons["not_complete_genome"].append(str(creature))
+                    reasons["not_complete_genome"].append(stem)
                 elif " x " in creature_name:    # 〜 x 〜　の雑種
-                    reasons["mongrel"].append(str(creature))
+                    reasons["mongrel"].append(stem)
                 elif len(re.findall(r"[atgc]", str(record.seq.lower()))) == 0:    #配列がない
-                    reasons["have_no_seq"].append(str(creature))
+                    reasons["have_no_seq"].append(stem)
                 else:
                     valids.append(creature)
         return valids, reasons
