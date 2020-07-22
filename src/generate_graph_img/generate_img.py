@@ -95,7 +95,7 @@ def parser() -> Namespace:
         "-o",
         "--output_dir",
         help=
-        f"Destination of generated_image. if don't specify, use {Path(__file__).resolve() / 'setting.yml'}"
+        f"Destination of generated_image. if don't specify, use {str(Path(__file__).resolve() / 'setting.yml')}"
     )
 
     args = argparser.parse_args()
