@@ -1,4 +1,4 @@
-import os
+import yaml
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -19,11 +19,8 @@ class OrganelleFetchCliant:
         """
         self.n_once = n_once
         self.use_column_title = column_title
-        try:
-            Entrez.email = os.environ["email"]
-        except KeyError as e:
-            print("環境変数に'email'がないようです.")
-            print("pipenvを使用している場合 .envファイルに email='<your email address>'を記入してください.")
+        with open(Path(__file__).resolve().parents[2] / "setting.yml") as f:
+            Entrez.email = yaml.safe_load(f)["email"]
 
     def fetch(self, source: Path, dst: Path) -> None:
         """csvファイルをもとにGenbankからデータを取得する
@@ -102,7 +99,6 @@ def parser() -> Namespace:
 
 if __name__ == "__main__":
     args = parser()
-    print(type(args))
 
     source = Path(args.csv).resolve()
     dst = Path(args.destination).resolve()
