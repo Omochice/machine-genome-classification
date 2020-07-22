@@ -77,11 +77,15 @@ def parser() -> Namespace:
     Returns:
         Namespace: args namespace.
     """
-    usage = f"Usage: python {__file__} [-w weight] [-i inputfiles] [-o output]"
+    usage = f"Usage: python {__file__} [-w weight] [-wo weight_output] [-i inputfiles] [-o output] "
     argparser = ArgumentParser(usage=usage)
     argparser.add_argument("-w",
                            "--weight",
                            help="If you have already weight data, write the path.")
+    argparser.add_argument(
+        "-wo",
+        "--weight_output",
+        help="if not use weight file, Destination of computed weight path.")
     argparser.add_argument("-i",
                            "--inputs",
                            nargs="*",
@@ -99,18 +103,24 @@ def parser() -> Namespace:
 
 
 if __name__ == "__main__":
+    project_dir = Path(__file__).resolve().parents[2]
     args = parser()
-    print(args.weight, args.inputs, args.output_dir)
+    with open(project_dir / "setting.yml") as f:
+        config = yaml.safe_load(f)
+
     inputs = list(map(lambda x: Path(x).resolve(), args.inputs))
     if args.weight is None:
         weight = calc_entropy.calc_self_entropies(inputs)
+        if args.weight_output is not None:
+            with open(Path(args.weight_output).resolve()) as f:
+                json.dump(weight, f, indent=4)
+
     else:
         with open(Path(args.weight).resolve()) as f:
             weight = json.load(f)
 
     if args.output_dir is None:
-        with open(Path(__file__).resolve().parents[2] / "setting.yml") as f:
-            dst = Path(yaml.safe_load(f)["image_output_dir"]).resolve()
+        dst = config["image_output_dir"]
     else:
         dst = Path(args.output_dir).resolve()
 
