@@ -77,7 +77,7 @@ def parser() -> Namespace:
     Returns:
         Namespace: args namespace.
     """
-    usage = f"Usage: python {__file__} [-w weight] [-wo weight_output] [-i inputfiles] [-o output] "
+    usage = f"Usage: python {__file__} [-w weight] [-wo weight_output] [-i inputfiles] [-d destination] "
     argparser = ArgumentParser(usage=usage)
     argparser.add_argument("-w",
                            "--weight",
@@ -86,17 +86,10 @@ def parser() -> Namespace:
         "-wo",
         "--weight_output",
         help="if not use weight file, Destination of computed weight path.")
-    argparser.add_argument("-i",
-                           "--inputs",
-                           nargs="*",
-                           help="Input file pathes",
-                           required=True)
-    argparser.add_argument(
-        "-o",
-        "--output_dir",
-        help=
-        f"Destination of generated_image. if don't specify, use {str(Path(__file__).resolve() / 'setting.yml')}"
-    )
+    argparser.add_argument("-i", "--inputs", nargs="*", help="Input file pathes")
+    argparser.add_argument("-d",
+                           "--destination",
+                           help=f"Destination of generated_image.)")
 
     args = argparser.parse_args()
     return args
@@ -111,25 +104,20 @@ if __name__ == "__main__":
     inputs = list(map(lambda x: Path(x).resolve(), args.inputs))
     if args.weight is None:
         weight = calc_entropy.calc_self_entropies(inputs)
-        if args.weight_output is not None:
-            with open(Path(args.weight_output).resolve()) as f:
-                json.dump(weight, f, indent=4)
-
+        weight_dst = Path(args.weight_output or config["weight_destination"]).resolve()
+        with open(weight_dst, "w") as f:
+            json.dump(weight, f, indent=4)
     else:
         with open(Path(args.weight).resolve()) as f:
             weight = json.load(f)
 
-    if args.output_dir is None:
-        dst = config["graph_destination"]
-    else:
-        dst = Path(args.output_dir).resolve()
+    dst = Path(args.destination or config["graph_destination"]).resolve()
 
     dst.mkdir(exist_ok=True)
 
     for input_gbk in inputs:
         for record in SeqIO.parse(str(input_gbk), "genbank"):
             acc = record.name
-            print(acc)
             fig = generate_image(record.seq, weight)
             plt.savefig(dst / f"{acc}.png")
             plt.close()
