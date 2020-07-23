@@ -15,9 +15,13 @@
     ```
 2. (pipenvを使用する場合)pipenvの初期化を行う
     ```console
-    $ pipenv sync
+    $ pipenv install
     ```
-3. `setting.yml`を生成する
+3. seqtoolsを仮想環境にインストールする
+    ```console
+    $ pipenv run python seqtools/setup.py develop
+    ```
+4. `setting.yml`を生成する
    ```console
    $ pipenv run python src/initialize.py
    ```
