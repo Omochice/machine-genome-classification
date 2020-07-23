@@ -1,10 +1,11 @@
 import json
 import re
-import yaml
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Iterator, List, Tuple
 
 import requests
+import yaml
 from Bio import Entrez, SeqIO
 
 from seqtools.seq_tools import gbk_utils
@@ -24,7 +25,7 @@ class TaxonFetchCliant:
             dst (Path): 取得結果を書き出すディレクトリ
 
         """
-        dst.mkdir(exist_ok=True)
+        dst.mkdir(exist_ok=True, parents=True)
         # 集合体から雑種とかを取り除く
         valid_creatures, reasons = self.extract_invalid_creature(pathes)
         with open(dst / "errors.json", "w") as f:
@@ -152,10 +153,33 @@ def fetch_taxon_from_GNR(names: list, priority: List[int] = None) -> Iterator[di
         yield result
 
 
+def parser() -> Namespace:
+    """setting for argparser
+
+    Returns:
+        Namespace: args namespace.
+    """
+    usage = f"Usage: python {__file__} [-i inputs...] [-d destination]"
+    argparser = ArgumentParser(usage=usage)
+    argparser.add_argument("-i", "--inputs", nargs="*", help="Target gbk files.")
+    argparser.add_argument("-d",
+                           "--destination",
+                           help="Destination of taxonomy json data.")
+
+    args = argparser.parse_args()
+    return args
+
+
 if __name__ == "__main__":
-    prj_dir = Path(__file__).resolve().parents[2]
-    pathes = list((prj_dir / "test/testdata/output").glob("*.gbk"))
-    dst = prj_dir / "test"
+    args = parser()
+    project_dir = Path(__file__).parents[2]
+
+    with open(project_dir / "setting.yml") as f:
+        config = yaml.safe_load(f)
+
+    inputs = args.inputs or list(Path(config["gbk_destination"]).glob("**/*.gbk"))
+    inputs = list(map(lambda x: Path(x).resolve(), inputs))
+    dst = Path(args.destionation or config["taxoninfo_destination"]).resolve()
 
     cliant = TaxonFetchCliant()
-    cliant.fetch_taxon_infos(pathes, dst)
+    cliant.fetch_taxon_infos(inputs, dst)

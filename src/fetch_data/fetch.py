@@ -87,10 +87,11 @@ def parser() -> Namespace:
     Returns:
         Namespace: args namespace.
     """
-    usage = f"Usage: python {__file__} <csv> <destination>"
+    usage = f"Usage: python {__file__} [-i input_csv] [-d destination]"
     argparser = ArgumentParser(usage=usage)
-    argparser.add_argument("csv", help="Source csv file path.")
-    argparser.add_argument("destination",
+    argparser.add_argument("-i", "--input_csv", help="Source csv file path.")
+    argparser.add_argument("-d",
+                           "--destination",
                            help="Destination dir path of downloaded file.")
 
     args = argparser.parse_args()
@@ -99,8 +100,12 @@ def parser() -> Namespace:
 
 if __name__ == "__main__":
     args = parser()
+    project_dir = Path(__file__).resolve().parents[2]
 
-    source = Path(args.csv).resolve()
-    dst = Path(args.destination).resolve()
+    with open(project_dir / "setting.yml") as f:
+        config = yaml.safe_load(f)
+
+    source = Path(args.csv or config["source_csv"]).resolve()
+    dst = Path(args.destination or config["gbk_destination"]).resolve()
 
     cliant = OrganelleFetchCliant().fetch(source, dst)
