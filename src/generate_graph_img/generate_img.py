@@ -120,7 +120,7 @@ if __name__ == "__main__":
             weight = json.load(f)
 
     if args.output_dir is None:
-        dst = config["image_output_dir"]
+        dst = config["graph_destination"]
     else:
         dst = Path(args.output_dir).resolve()
 
