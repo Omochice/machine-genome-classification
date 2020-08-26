@@ -1,12 +1,13 @@
+import json
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Tuple
-import json
-import yaml
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 from Bio import Seq, SeqIO
-from argparse import Namespace, ArgumentParser
 
 from seqtools.seq_tools import calc_entropy, gbk_utils
 
