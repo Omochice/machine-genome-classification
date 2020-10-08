@@ -17,4 +17,4 @@ pyyaml = "*"
 python_version = "3.8"
 
 [scripts]
-test = "python -m unittest discover -s test -v"
+test = "python -m pytest"
