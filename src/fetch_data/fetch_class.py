@@ -12,7 +12,7 @@ from seqtools.seq_tools import gbk_utils
 
 
 class TaxonFetchCliant:
-    def __init__(self, n_once: int = 1000) -> None:
+    def __init__(self, n_once: int = 100) -> None:
         self.n_once = n_once
         with open(Path(__file__).resolve().parents[2] / "setting.yml") as f:
             Entrez.email = yaml.safe_load(f)["email"]
@@ -37,18 +37,24 @@ class TaxonFetchCliant:
             use_pathes = valid_creatures[i:i + self.n_once]
             taxon_ids = list(map(gbk_utils.get_taxonID, use_pathes))
             names = list(map(self._get_creature_name, use_pathes))
-            for index, (res_ncbi, res_gnr) in enumerate(
-                    zip(fetch_taxon_from_NCBI(taxon_ids), fetch_taxon_from_GNR(names))):
+            for path_name, binomial_name, res_ncbi, res_gnr in zip(
+                    use_pathes, names, fetch_taxon_from_NCBI(taxon_ids),
+                    fetch_taxon_from_GNR(names)):
                 taxon = {**{"NCBI Taxonomy": res_ncbi}, **res_gnr}
-                stem = use_pathes[index].stem
+                stem = path_name.stem
                 results[stem] = {
-                    "binomial_name": names[index],
+                    "binomial_name": binomial_name,
                     "accession": stem,
                     "taxon": taxon
                 }
             # 1000件取得したらファイルに書き出す
             with open(dst / f"result_{i}.json", "w") as f:
-                json.dump(results, f, indent=4)
+                try:
+                    json.dump(results, f, indent=4)
+                except Exception:
+                    print(results)
+                    import sys
+                    sys.exit()
 
     def extract_invalid_creature(self,
                                  creatures: List[Path]) -> Tuple[List[Path], dict]:
@@ -67,7 +73,7 @@ class TaxonFetchCliant:
             for record in SeqIO.parse(creature, "genbank"):
                 title = record.description
                 creature_name = record.annotations["organism"]
-                if "complete genome" not in title:    # complete genome ではない
+                if "complete" not in title:    # complete genome ではない
                     reasons["not_complete_genome"].append(stem)
                 elif " x " in creature_name:    # 〜 x 〜　の雑種
                     reasons["mongrel"].append(stem)
@@ -138,7 +144,12 @@ def fetch_taxon_from_GNR(names: list, priority: List[int] = None) -> Iterator[di
         "preferred_data_sources": "|".join(map(str, priority))
     }
     r = requests.get(url, params=params)
-    data = r.json()
+    try:
+        data = r.json()
+    except Exception:
+        print(r)
+        import sys
+        sys.exit()
     for entry in data["data"]:
         result = {}
         for record in entry["preferred_results"]:
@@ -179,7 +190,7 @@ if __name__ == "__main__":
 
     inputs = args.inputs or list(Path(config["gbk_destination"]).glob("**/*.gbk"))
     inputs = list(map(lambda x: Path(x).resolve(), inputs))
-    dst = Path(args.destionation or config["taxoninfo_destination"]).resolve()
+    dst = Path(args.destination or config["taxoninfo_destination"]).resolve()
 
     cliant = TaxonFetchCliant()
     cliant.fetch_taxon_infos(inputs, dst)
