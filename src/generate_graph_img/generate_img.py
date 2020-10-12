@@ -82,7 +82,7 @@ def parser() -> Namespace:
     argparser = ArgumentParser(usage=usage)
     argparser.add_argument("-w",
                            "--weight",
-                           help="If you have already weight data, write the path.")
+                           help="If you already have weight data, write the path.")
     argparser.add_argument(
         "-wo",
         "--weight_output",
@@ -117,8 +117,11 @@ if __name__ == "__main__":
     dst.mkdir(exist_ok=True)
 
     for input_gbk in inputs:
+        taxon_name = input_gbk.parent.name
         for record in SeqIO.parse(str(input_gbk), "genbank"):
             acc = record.name
             fig = generate_image(record.seq, weight)
-            plt.savefig(dst / f"{acc}.png")
+            out_dst = dst / taxon_name / f"{acc}.png"
+            out_dst.parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(out_dst)
             plt.close()

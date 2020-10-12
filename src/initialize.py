@@ -17,10 +17,11 @@ def init_settig(setting: Path) -> None:
         "gbk_destination": str(project_dir / "data" / "gbk"),
         "taxoninfo_destination": str(project_dir / "data" / "taxon"),
         "graph_destination": str(project_dir / "data" / "img"),
-        "weight_destination": str(project_dir / "data" / "weight"),
+        "weight_destination": str(project_dir / "data" / "weight.json"),
         "graph_pix": 192,
         "priority": priority,
-        "focus_rank": "class"
+        "focus_rank": "class",
+        "invalid_creatures": str(project_dir / "data" / "invalid_creatures.json")
     }
     with open(setting, "w") as f:
         yaml.safe_dump(dummy, f)
