@@ -21,6 +21,7 @@ def init_settig(setting: Path) -> None:
         "graph_pix": 192,
         "priority": priority,
         "focus_rank": "class",
+        "use_limit": 5,
         "invalid_creatures": str(project_dir / "data" / "invalid_creatures.json")
     }
     with open(setting, "w") as f:
