@@ -9,38 +9,49 @@
 また、機械学習に用いるデータとして、ミトコンドリアのゲノム配列を一定の規則により画像化したものを入力とし、入力された生物がどの綱に属するかを判別するのが現時点での目標である。
 
 ## 使い方
+
 1. このリポジトリをクローンする。
-    ```console
-    $ git clone https://github.com/Omochice/master_thesis.git
-    ```
-2. (pipenvを使用する場合)pipenvの初期化を行う
-    ```console
-    $ pipenv install
-    ```
-3. seqtoolsを仮想環境にインストールする
-    ```console
-    $ pipenv run python seqtools/setup.py develop
-    ```
+   ```console
+   $ git clone https://github.com/Omochice/master_thesis.git
+   ```
+2. (pipenv を使用する場合)pipenv の初期化を行う
+   ```console
+   $ pipenv install
+   ```
+3. seqtools を仮想環境にインストールする
+   ```console
+   $ pipenv run python seqtools/setup.py develop
+   ```
 4. `setting.yml`を生成する
    ```console
    $ pipenv run python src/initialize.py
    ```
-   emailは自分のものを記載する(Entrez.emailに使う)
+   email は自分のものを記載する(Entrez.email に使う)
 
-* [organelles db](https://www.ncbi.nlm.nih.gov/genome/browse#!/organelles/)から取得したcsvを元にgenbankからgbkファイルを取得する
+- [organelles db](https://www.ncbi.nlm.nih.gov/genome/browse#!/organelles/)から取得した csv を元に genbank から gbk ファイルを取得する
+
   ```console
   $ pipenv run python src/fetch_data/fetch.py [-i input_csv] [-d destination]
   ```
+
   `input_csv`, `destionation`の指定がないときは`setting.yml`に記載されたパスを使用する
+  `invalid_creatures`に記載されたパスに雑種などの使用しない生物を json 形式で書き出す
 
+- 取得した genbank ファイルの生物の分類学情報を取得する
 
-* 取得したgenbankファイルの生物の分類学情報を取得する
   ```console
   $ pipenv run python src/fetch_data/fetch_class.py [-i inputs...] [-d destination]
   ```
+
   `inputs`, `destionation`の指定がないときは`setting.yml`に記載されたパスを使用する
 
-* 取得した生物のゲノム配列を画像化する
+- 取得した分類学情報をもとに gbk ファイルを`focus_rank`別にディレクトリわけする
+
+  ```console
+  $ pipenv run python src/classification/classification.py [-i input_dir]
+  ```
+
+- 取得した生物のゲノム配列を画像化する
   ```console
   $ pipenv run python src/generate_graph_img/generate_img.py [-w weight] [-wo weight_output] [-i inputfiles] [-d destination]
   ```
