@@ -103,6 +103,19 @@ def classification(target_dir: Path) -> None:
         move_gbk(target, target_dir, invalids, taxon_dict, config)
 
 
+def extract_small_class(target_dir: Path, limit: int, invalid_path: Path) -> None:
+    """生物種が少ないクラスは使うのに適していないので除外する
+
+    Args:
+        target_dir (Path): 対象のディレクトリ
+        limit (int): これ以下の生物しか含まないクラスは除外する
+    """
+    targets = [c for c in target_dir.glob("*") if c.is_dir]
+    for c in targets:
+        if len([creature for creature in c.glob("*") if creature.is_file]) <= limit:
+            shutil.move(str(c), invalid_path / "small_class")
+
+
 def parser() -> Namespace:
     """setting for argparser
 
@@ -117,7 +130,14 @@ def parser() -> Namespace:
     return args
 
 
+import yaml
 if __name__ == "__main__":
     args = parser()
+    project_dir = Path(__file__).resolve().paretns[2]
+    with open(project_dir / "setting.yml") as f:
+        config = yaml.safe_load(f)
     target_dir = Path(args.target_dir).resolve()
     classification(target_dir)
+    extract_small_class(
+        Path(config["gbk_destination"]) / "valid", config["use_limit"],
+        Path(config["gbk_destination"]) / "invalid")
