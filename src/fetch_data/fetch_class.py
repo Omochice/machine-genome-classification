@@ -17,7 +17,8 @@ class TaxonFetchCliant:
         with open(Path(__file__).resolve().parents[2] / "setting.yml") as f:
             Entrez.email = yaml.safe_load(f)["email"]
 
-    def fetch_taxon_infos(self, pathes: List[Path], dst: Path) -> None:
+    def fetch_taxon_infos(self, pathes: List[Path], dst: Path,
+                          invalids_path: str) -> None:
         """インターネットから生物の分類情報を取得する
 
         Args:
@@ -28,7 +29,7 @@ class TaxonFetchCliant:
         dst.mkdir(exist_ok=True, parents=True)
         # 集合体から雑種とかを取り除く
         valid_creatures, reasons = self.extract_invalid_creature(pathes)
-        with open(dst / "errors.json", "w") as f:
+        with open(invalids_path, "w") as f:
             json.dump(reasons, f, indent=4)
 
         # ncbi, globalnameresolverをそれぞれ検索する
@@ -47,14 +48,9 @@ class TaxonFetchCliant:
                     "accession": stem,
                     "taxon": taxon
                 }
-            # 1000件取得したらファイルに書き出す
+            # n_once件取得したらファイルに書き出す
             with open(dst / f"result_{i}.json", "w") as f:
-                try:
-                    json.dump(results, f, indent=4)
-                except Exception:
-                    print(results)
-                    import sys
-                    sys.exit()
+                json.dump(results, f, indent=4)
 
     def extract_invalid_creature(self,
                                  creatures: List[Path]) -> Tuple[List[Path], dict]:
@@ -67,21 +63,21 @@ class TaxonFetchCliant:
             Tuple[list[Path], dict]: 使用できるpathのlist, 使用できないデータの理由とpathのdict
         """
         valids = []
-        reasons = {"not_complete_genome": [], "mongrel": [], "have_no_seq": []}
+        invalids = {}
         for creature in creatures:
             stem = creature.stem
             for record in SeqIO.parse(creature, "genbank"):
                 title = record.description
                 creature_name = record.annotations["organism"]
                 if "complete" not in title:    # complete genome ではない
-                    reasons["not_complete_genome"].append(stem)
+                    invalids[stem] = "not_complete_genome"
                 elif " x " in creature_name:    # 〜 x 〜　の雑種
-                    reasons["mongrel"].append(stem)
+                    invalids[stem] = "mongrel"
                 elif len(re.findall(r"[atgc]", str(record.seq.lower()))) == 0:    #配列がない
-                    reasons["have_no_seq"].append(stem)
+                    invalids[stem] = "have_no_seq"
                 else:
                     valids.append(creature)
-        return valids, reasons
+        return valids, invalids
 
     def _get_creature_name(self, p: Path) -> str:
         for record in SeqIO.parse(p, "genbank"):
@@ -147,9 +143,9 @@ def fetch_taxon_from_GNR(names: list, priority: List[int] = None) -> Iterator[di
     try:
         data = r.json()
     except Exception:
-        print(r)
+        print(f"Error: {r}")
         import sys
-        sys.exit()
+        sys.exit(1)
     for entry in data["data"]:
         result = {}
         for record in entry["preferred_results"]:
@@ -193,4 +189,4 @@ if __name__ == "__main__":
     dst = Path(args.destination or config["taxoninfo_destination"]).resolve()
 
     cliant = TaxonFetchCliant()
-    cliant.fetch_taxon_infos(inputs, dst)
+    cliant.fetch_taxon_infos(inputs, dst, config["invalid_creatures"])
