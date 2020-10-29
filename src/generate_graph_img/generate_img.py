@@ -117,6 +117,8 @@ if __name__ == "__main__":
     dst.mkdir(exist_ok=True)
 
     for input_gbk in inputs:
+        taxon_name = input_gbk.parent.name
+        print(input_gbk.name)
         for record in SeqIO.parse(str(input_gbk), "genbank"):
             acc = record.name
             fig = generate_image(record.seq, weight)
