@@ -6,6 +6,8 @@ verify_ssl = true
 [dev-packages]
 yapf = "*"
 ipython = "*"
+ptpython = "*"
+pytest = "*"
 
 [packages]
 biopython = "*"
@@ -13,6 +15,9 @@ requests = "*"
 matplotlib = "*"
 pandas = "*"
 pyyaml = "*"
+tensorflow = "*"
+seaborn = "*"
+sklearn = "*"
 
 [requires]
 python_version = "3.8"
