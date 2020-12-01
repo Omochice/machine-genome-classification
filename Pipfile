@@ -8,6 +8,7 @@ yapf = "*"
 ipython = "*"
 ptpython = "*"
 pytest = "*"
+ptipython = "*"
 
 [packages]
 biopython = "*"
