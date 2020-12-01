@@ -12,7 +12,7 @@ def construct_model(n_class: int):
                             input_shape=(128, 128, 3),
                             weights="imagenet",
                             pooling="max")(change_channel)
-    input2 = Input(shape=(32, ))
+    input2 = Input(shape=(5, ))
     concate = Concatenate()([mobilenet, input2])
     dense = Dense(128, activation="relu")(concate)
     dropout = Dropout(0.3)(dense)
