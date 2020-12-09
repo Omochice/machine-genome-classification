@@ -1,0 +1,43 @@
+LOCUS       CM010561               18826 bp    DNA     circular CON 17-AUG-2018
+DEFINITION  Drosophila melanogaster strain A2 breed BOG 1 mitochondrion,
+            complete sequence, whole genome shotgun sequence.
+ACCESSION   CM010561
+VERSION     CM010561.1
+DBLINK      BioProject: PRJNA418342
+            BioSample: SAMN08026568
+KEYWORDS    WGS.
+SOURCE      mitochondrion Drosophila melanogaster (fruit fly)
+  ORGANISM  Drosophila melanogaster
+            Eukaryota; Metazoa; Ecdysozoa; Arthropoda; Hexapoda; Insecta;
+            Pterygota; Neoptera; Holometabola; Diptera; Brachycera; Muscomorpha;
+            Ephydroidea; Drosophilidae; Drosophila; Sophophora.
+REFERENCE   1  (bases 1 to 18826)
+  AUTHORS   Chakraborty,M.
+  TITLE     DSPR Founder Genomes
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 18826)
+  AUTHORS   Chakraborty,M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (14-NOV-2017) Ecology & Evolutionary Biology, University
+            of California - Irvine, 5230 McGaugh Hall, Irvine, CA 92697-2525,
+            USA
+COMMENT     ##Genome-Assembly-Data-START##
+            Assembly Method        :: Canu v. 1.3; DBG2OLC v. 1.0
+            Genome Representation  :: Full
+            Expected Final Version :: Yes
+            Genome Coverage        :: 57x
+            Sequencing Technology  :: PacBio
+            ##Genome-Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..18826
+                     /organism="Drosophila melanogaster"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /strain="A2"
+                     /db_xref="taxon:7227"
+                     /sex="male"
+                     /tissue_type="body"
+                     /dev_stage="adult"
+                     /note="breed: BOG 1"
+CONTIG      join(PGRK01000173.1:1..18826)
+//

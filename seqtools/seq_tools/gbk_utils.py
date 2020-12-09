@@ -1,15 +1,16 @@
 import re
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, AnyStr
+from os import PathLike
 
 from Bio import Seq, SeqIO
 
 
-def get_taxonID(path: Path) -> str:
+def get_taxonID(path: PathLike) -> str:
     """対象のgbkファイルのrecordからtaxonIDを抽出する
 
     Args:
-        record (SeqRecord.SeqRecord): 対象のrecord
+        record (PathLike): 対象のファイルのpath
 
     Returns:
         str: db_xrefに記載されたTaxonID
@@ -25,6 +26,32 @@ def get_taxonID(path: Path) -> str:
 
 class NotFoundTaxonIDError(Exception):
     pass
+
+
+def get_definition(path: PathLike) -> str:
+    """get definition.
+
+    Args:
+        path (Path): 対象のファイルのpath
+
+    Returns:
+        str: 生物の学名
+    """
+    for record in SeqIO.parse(path, "genbank"):
+        return record.description
+
+
+def get_creature_name(path: PathLike) -> str:
+    """get creature name.
+
+    Args:
+        path (PathLike): 対象のファイルのpath
+
+    Returns:
+        str:
+    """
+    for record in SeqIO.parse(path, "genbank"):
+        return record.annotations["organism"]
 
 
 def window_serach(sequence: Seq.Seq,
@@ -58,6 +85,55 @@ def window_serach(sequence: Seq.Seq,
     if overhang in {"after", "both"}:
         for i in range(-1 * each + 1, 0, 1):
             yield formatted[i:]
+
+
+def to_only_actg(seq: AnyStr) -> Seq.Seq:
+    """Change source str like object to {ATGCatgc} only format.
+
+    Args:
+        seq (AnyStr): seq
+
+    Returns:
+        Seq.Seq:
+    """
+
+    return Seq.Seq(re.sub("[^ATGCatgc]", "", str(seq)))
+
+
+def has_seq(gbk: PathLike) -> bool:
+    """与えられたgbkファイルが有効な配列長を持つかどうかを返す.
+
+    Args:
+        gbk (PathLike): gbkファイルへのpath
+
+    Returns:
+        bool:
+    """
+    return any([len(to_only_actg(rec.seq)) for rec in SeqIO.parse(gbk, "genbank")])
+
+
+def is_mongrel(name: str) -> bool:
+    """'~ x ~'で書かれる雑種かどうかを返す.
+
+    Args:
+        name (str): 生物種
+
+    Returns:
+        bool:
+    """
+    return " x " in name
+
+
+def is_complete_genome(definition: str) -> bool:
+    """完全なミトコンドリアゲノムかどうかを返す.
+
+    Args:
+        definition (str): definition
+
+    Returns:
+        bool:
+    """
+    return "mitochondrion, complete genome" in definition
 
 
 if __name__ == "__main__":
