@@ -1,9 +1,10 @@
 import re
 from pathlib import Path
-from typing import Iterator, AnyStr
+from typing import Iterator, AnyStr, Tuple, Dict
 from os import PathLike
+from collections import Counter
 
-from Bio import Seq, SeqIO
+from Bio import Seq, SeqIO, SeqRecord
 
 
 def get_taxonID(path: PathLike) -> str:
@@ -87,6 +88,14 @@ def window_serach(sequence: Seq.Seq,
             yield formatted[i:]
 
 
+def get_atgc_rate(seq: Seq) -> Dict[str, int]:
+    pretty_seq = re.sub("[^ATGC]", "", seq.upper())
+    n_seq = len(pretty_seq)
+    counter = Counter(pretty_seq)
+    rate = {k: v / n_seq for k, v in counter.items()}
+    return rate
+
+
 def to_only_actg(seq: AnyStr) -> Seq.Seq:
     """Change source str like object to {ATGCatgc} only format.
 
@@ -134,6 +143,32 @@ def is_complete_genome(definition: str) -> bool:
         bool:
     """
     return "mitochondrion, complete genome" in definition
+
+
+contig_pattern = re.compile(r"join(\(complement)?\((\w*(\.\d)?):(\d+)\.\.(\d+)\)\)?")
+
+
+def parse_contig(contig: str) -> dict:
+    """return contig doscription
+
+    Args:
+        contig [str]: A contig string.
+
+    Returns:
+        dict: A dict of contig informations.
+    """
+    match = contig_pattern.match(contig)
+    is_complement = bool(match.groups(1))
+    accession = match.groups(2)[1].split(".")[0]
+    start = int(match.group(4)) - 1
+    end = int(match.group(5))
+
+    return {
+        "accession": accession,
+        "is_complement": is_complement,
+        "start": start,
+        "end": end
+    }
 
 
 if __name__ == "__main__":
