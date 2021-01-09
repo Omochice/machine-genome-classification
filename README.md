@@ -28,31 +28,47 @@
    ```
    email は自分のものを記載する(Entrez.email に使う)
 
-- [organelles db](https://www.ncbi.nlm.nih.gov/genome/browse#!/organelles/)から取得した csv を元に genbank から gbk ファイルを取得する
 
-  ```console
-  $ pipenv run python src/fetch_data/fetch.py [-i input_csv] [-d destination]
-  ```
+以降、自分の行いたい作業を行ってください
 
-  `input_csv`, `destionation`の指定がないときは`setting.yml`に記載されたパスを使用する
-  `invalid_creatures`に記載されたパスに雑種などの使用しない生物を json 形式で書き出す
-
-- 取得した genbank ファイルの生物の分類学情報を取得する
-
-  ```console
-  $ pipenv run python src/fetch_data/fetch_class.py [-i inputs...] [-d destination]
-  ```
-
-  `inputs`, `destionation`の指定がないときは`setting.yml`に記載されたパスを使用する
-
-- 取得した分類学情報をもとに gbk ファイルを`focus_rank`別にディレクトリわけする
-
-  ```console
-  $ pipenv run python src/classification/classification.py [-i input_dir]
-  ```
-
-- 取得した生物のゲノム配列を画像化する
-  ```console
-  $ pipenv run python src/generate_graph_img/generate_img.py [-w weight] [-wo weight_output] [-i inputfiles] [-d destination]
-  ```
-  指定がないものは`setting.yml`から読み込む
+* csvを元にgbkを取得、`focus_rank`にしたがってディレクトリに分ける
+```console
+$ pipenv run python -m src.data_preparation.fetch
+```
+    * これをそれぞれ単品で行う場合は次の通り
+    * csvを元にgbkを取得
+```console
+$ pipenv run get_gbk_by_csv
+or 
+$ pipenv run python -m src.data_preparation.fetch --source_csv <csvへのpath> --destination <gbkを保存するディレクトリ>
+```
+    * あるディレクトリに 
+<!--  -->
+<!-- - [organelles db](https://www.ncbi.nlm.nih.gov/genome/browse#!/organelles/)から取得した csv を元に genbank から gbk ファイルを取得する -->
+<!--  -->
+<!--   ```console -->
+<!--   $ pipenv run python src/fetch_data/fetch.py [-i input_csv] [-d destination] -->
+<!--   ``` -->
+<!--  -->
+<!--   `input_csv`, `destionation`の指定がないときは`setting.yml`に記載されたパスを使用する -->
+<!--   `invalid_creatures`に記載されたパスに雑種などの使用しない生物を json 形式で書き出す -->
+<!--  -->
+<!-- - 取得した genbank ファイルの生物の分類学情報を取得する -->
+<!--  -->
+<!--   ```console -->
+<!--   $ pipenv run python src/fetch_data/fetch_class.py [-i inputs...] [-d destination] -->
+<!--   ``` -->
+<!--  -->
+<!--   `inputs`, `destionation`の指定がないときは`setting.yml`に記載されたパスを使用する -->
+<!--  -->
+<!-- - 取得した分類学情報をもとに gbk ファイルを`focus_rank`別にディレクトリわけする -->
+<!--  -->
+<!--   ```console -->
+<!--   $ pipenv run python src/classification/classification.py [-i input_dir] -->
+<!--   ``` -->
+<!--  -->
+<!-- - 取得した生物のゲノム配列を画像化する -->
+<!--   ```console -->
+<!--   $ pipenv run python src/generate_graph_img/generate_img.py [-w weight] [-wo weight_output] [-i inputfiles] [-d destination] -->
+<!--   ``` -->
+<!--   指定がないものは`setting.yml`から読み込む -->
