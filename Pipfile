@@ -9,6 +9,8 @@ ipython = "*"
 ptpython = "*"
 pytest = "*"
 ptipython = "*"
+jupyterlab = "*"
+jupyter-lsp = "*"
 
 [packages]
 biopython = "*"
