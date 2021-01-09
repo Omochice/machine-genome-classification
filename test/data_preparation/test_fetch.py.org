@@ -1,0 +1,9 @@
+from src.fetch_data.fetch import parge_csv, validate_replicons
+from pathlib import Path
+
+
+def test_validate_replicons():
+    pwd = Path(__file__).resolve().parents[1]
+    for p in [pwd / "in" / f"{i}.csv" for i in range(3)]:
+        assert ["NC_038132.1", "NC_020356.1",
+                "AC_0123.1"] == validate_replicons(parge_csv(p, "Replicons"))
