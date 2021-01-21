@@ -11,22 +11,20 @@ def init_settig(setting: Path) -> None:
         "Open Tree of Life Reference Taxonomy",
         "The Interim Register of Marine and Nonmarine Genera"
     ]
-    dummy = {
-        "email": "",
-        "source_csv": "",
-        "gbk_destination": str(project_dir / "data" / "gbk"),
-        "taxoninfo_destination": str(project_dir / "data" / "taxon"),
-        "graph_destination": str(project_dir / "data" / "img"),
-        "weight_destination": str(project_dir / "data" / "weight.json"),
+    template = {
+        "email": "<FILL IN>",
+        "source_csv": "<FILL IN>",
+        "destination": str(project_dir / "data"),
         "graph_pix": 192,
         "priority": priority,
         "focus_rank": "class",
-        "use_limit": 5,
-        "invalid_creatures": str(project_dir / "data" / "invalid_creatures.json")
+        "use_limit": 5
     }
     with open(setting, "w") as f:
-        yaml.safe_dump(dummy, f)
+        yaml.safe_dump(template, f)
     print("generating is done. Please rewrite if you need.")
+
+    (project_dir / "data").mkdir(parents=True, exist_ok=True)
 
 
 def main() -> None:
