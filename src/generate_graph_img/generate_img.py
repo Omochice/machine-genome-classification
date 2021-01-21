@@ -1,14 +1,13 @@
 import json
-from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Tuple
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import yaml
 from Bio import Seq, SeqIO
-
 from seqtools.seq_tools import calc_entropy, gbk_utils
 
 matplotlib.use("Agg")
@@ -72,56 +71,38 @@ def calc_coordinates(seq: Seq.Seq, weight: dict) -> Tuple[list, list]:
     return x_coo, y_coo
 
 
-def parser() -> Namespace:
-    """setting for argparser
-
-    Returns:
-        Namespace: args namespace.
-    """
-    usage = f"Usage: python {__file__} [-w weight] [-wo weight_output] [-i inputfiles] [-d destination] "
-    argparser = ArgumentParser(usage=usage)
-    argparser.add_argument("-w",
-                           "--weight",
-                           help="If you already have weight data, write the path.")
-    argparser.add_argument(
-        "-wo",
-        "--weight_output",
-        help="if not use weight file, Destination of computed weight path.")
-    argparser.add_argument("-i", "--inputs", nargs="*", help="Input file pathes")
-    argparser.add_argument("-d",
-                           "--destination",
-                           help=f"Destination of generated_image.)")
-
-    args = argparser.parse_args()
-    return args
-
-
 if __name__ == "__main__":
     project_dir = Path(__file__).resolve().parents[2]
-    args = parser()
     with open(project_dir / "setting.yml") as f:
         config = yaml.safe_load(f)
 
-    inputs = list(map(lambda x: Path(x).resolve(), args.inputs))
-    if args.weight is None:
-        weight = calc_entropy.calc_self_entropies(inputs)
-        weight_dst = Path(args.weight_output or config["weight_destination"]).resolve()
-        with open(weight_dst, "w") as f:
-            json.dump(weight, f, indent=4)
-    else:
-        with open(Path(args.weight).resolve()) as f:
-            weight = json.load(f)
+    df = pd.read_csv(Path(config["destination"]) / "csv" / "creatures.csv")
 
-    dst = Path(args.destination or config["graph_destination"]).resolve()
+    query_string = "not is_mongrel and complete and not shotgun and not chromosome"
+    accs = df.query(query_string)["accession"]
 
-    dst.mkdir(exist_ok=True)
+    acc_to_seq: Dict[str, Seq.Seq] = {}
 
-    for input_gbk in inputs:
-        taxon_name = input_gbk.parent.name
-        for record in SeqIO.parse(str(input_gbk), "genbank"):
-            acc = record.name
-            fig = generate_image(record.seq, weight)
-            out_dst = dst / taxon_name / f"{acc}.png"
-            out_dst.parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(out_dst)
-            plt.close()
+    # construct list
+    gbk_dir = Path(config["destination"]) / "gbk"
+    for gbkfile in map(lambda acc: gbk_dir / f"{acc}.gbk", accs):
+        for record in SeqIO.parse(gbkfile, "genbank"):
+            seq = gbk_utils.get_seq(record,
+                                    recursive=True,
+                                    search_gbk_root=(gbk_dir / "contigs"))
+            acc_to_seq[record.name] = seq
+
+    # generate_weight
+    weight = calc_entropy.calc_weights(acc_to_seq.values(), atgc_only=True)
+    with open(Path(config["destination"]) / "json" / "weights.json", "w") as f:
+        json.dump(weight, f)
+
+    # plot each sequeces
+    img_dst = Path(config["destination"]) / "img"
+    img_dst.mkdir(parents=True, exist_ok=True)
+
+    for acc, sequence in acc_to_seq.items():
+        fig = generate_image(sequence, weight)
+        dst = img_dst / f"{acc}.png"
+        plt.savefig(dst)
+        plt.close()    # clear figure on each species
