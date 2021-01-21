@@ -102,7 +102,7 @@ if __name__ == "__main__":
     img_dst.mkdir(parents=True, exist_ok=True)
 
     for acc, sequence in acc_to_seq.items():
-        fig = generate_image(sequence, weight)
+        fig = generate_image(sequence, weight, config["graph_pix"])
         dst = img_dst / f"{acc}.png"
         plt.savefig(dst)
         plt.close()    # clear figure on each species
