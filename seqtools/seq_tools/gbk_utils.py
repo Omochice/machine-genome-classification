@@ -203,18 +203,18 @@ def get_seq(record: SeqRecord,
         Seq.Seq: record's sequence.
     """
     if recursive and has_contig(record):
-        contig_info = parse_contig(record.annotations["contigs"])
+        contig_info = parse_contig(record.annotations["contig"])
         contig_gbk = Path(search_gbk_root) / f"{contig_info['accession']}.gbk"
         if not contig_gbk.exists():
             raise FileNotFoundError
         else:
             for r in SeqIO.parse(contig_gbk, "genbank"):    # 複数レコードは考慮しない(面倒なので)
-                return get_seq(
-                    r,
-                    recursive=True,
-                    search_gbk_root=search_gbk_root,
-                    is_complement=(is_complement ^ contig_info["is_complement"]
-                                   ))    # よって複数レコードだと最初のものが対象になるが多分大丈夫
+                return get_seq(r,
+                               recursive=True,
+                               search_gbk_root=search_gbk_root,
+                               is_complement=(is_complement
+                                              ^ contig_info["is_complement"]))
+                # よって複数レコードだと最初のものが対象になるが多分大丈夫
     else:
         seq = record.seq
         if is_complement:
