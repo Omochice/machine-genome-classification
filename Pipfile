@@ -27,3 +27,7 @@ python_version = "3.8"
 
 [scripts]
 test = "python -m pytest"
+fetch = "python -m src.data_preparation.fetch"
+gen_img = "python -m src.generate_graph_img.generate_img"
+gen_one_img = "python -m src.generate_graph_img.generate_one"
+
