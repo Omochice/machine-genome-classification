@@ -6,9 +6,7 @@ verify_ssl = true
 [dev-packages]
 yapf = "*"
 ipython = "*"
-ptpython = "*"
 pytest = "*"
-ptipython = "*"
 jupyterlab = "*"
 jupyter-lsp = "*"
 
@@ -18,9 +16,10 @@ requests = "*"
 matplotlib = "*"
 pandas = "*"
 pyyaml = "*"
-tensorflow = "*"
 seaborn = "*"
 sklearn = "*"
+tensorflow = "==2.4.0"
+pydot = "*"
 
 [requires]
 python_version = "3.8"
@@ -30,4 +29,3 @@ test = "python -m pytest"
 fetch = "python -m src.data_preparation.fetch"
 gen_img = "python -m src.generate_graph_img.generate_img"
 gen_one_img = "python -m src.generate_graph_img.generate_one"
-
