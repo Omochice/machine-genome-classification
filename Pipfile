@@ -19,7 +19,7 @@ pyyaml = "*"
 seaborn = "*"
 sklearn = "*"
 tensorflow = "==2.4.0"
-pydot = "*"
+pydotplus = "*"
 
 [requires]
 python_version = "3.8"
