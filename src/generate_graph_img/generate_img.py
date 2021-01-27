@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import sys
 from typing import Dict, Tuple
 
 import matplotlib
@@ -76,7 +77,9 @@ if __name__ == "__main__":
     with open(project_dir / "setting.yml") as f:
         config = yaml.safe_load(f)
 
-    df = pd.read_csv(Path(config["destination"]) / "csv" / "creatures.csv")
+    filename = sys.argv[1]
+
+    df = pd.read_csv(project_dir / filename)
 
     query_string = "not is_mongrel and complete and not shotgun and not chromosome"
     accs = df.query(query_string)["accession"]
