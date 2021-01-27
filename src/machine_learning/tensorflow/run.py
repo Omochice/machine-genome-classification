@@ -1,18 +1,47 @@
 # 実際に機械学習を実行するプログラムを書く
 
+import sys
 from PIL import Image
-from . import model
+from . import model, visualize
 import sklearn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import load_img
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import CSVLogger, History
+from sklearn.utils.class_weight import compute_class_weight
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import yaml
 
+from typing import Iterable, Optional
 from os import PathLike
+
+
+def calc_label_weights(labels: np.ndarray, option: Optional[str] = None) -> dict:
+    """calc weight for imbalanced data.
+
+    Args:
+        labels (np.ndarray): labels. ex) [0, 1, 1, 1, ...]
+        option (Optional[str]): select type option. in {None, "log"}
+    Returns:
+        dict: number to weight. ex) {0: 30, 1: 5, 2: 0.5}
+    """
+    if option not in {None, "log"}:
+        print("Argment 'option' must be in {None, 'log'}")
+        sys.exit(1)
+
+    weights = compute_class_weight("balanced", np.unique(labels), labels)
+    n_label_type = len(weights)
+    if option == "log":
+        return {
+            i: weight
+            for i, weight in enumerate(-np.log(1 / (n_label_type * weights)))
+        }
+    else:
+        return {i: weight for i, weight in enumerate(weights)}
 
 
 def load_data(filename: PathLike):
@@ -80,7 +109,7 @@ def to_categorical(labels: np.ndarray) -> np.ndarray:
     return one_hot
 
 
-def load_images(pathes: np.ndarray) -> np.ndarray:
+def load_images(pathes: Iterable[PathLike]) -> np.ndarray:
     """画像のパスが格納されたnumpy配列から画素値の配列を得る
 
     Args:
@@ -95,28 +124,32 @@ def load_images(pathes: np.ndarray) -> np.ndarray:
 
 if __name__ == "__main__":
     project_dir = Path(__file__).resolve().parents[3]
+    source_features = Path(sys.argv[1])
+
     with open(project_dir / "setting.yml") as f:
         config = yaml.safe_load(f)
-    fname = Path(config["data_destionation"]) / "csv" / "features.csv"
-    accs, labels, pathes, n_len, a, t, g, c = load_data(fname)
-    ss = StandardScaler()
-    n_len = ss.fit_transform(n_len.reshape(n_len.shape[0], 1)).flatten()
-    print(n_len.shape, a.shape)
-    liner_fetures = np.stack([a, t, g, c, n_len], axis=1).astype("float32")
-    print(liner_fetures)
-    print(f"mean: {ss.mean_}, var: {ss.var_}")
-    labels = to_categorical(labels)
-    images = load_images(pathes)
 
-    ml_model = model.construct_model(n_class=len(labels[0]))
-    ml_model.compile(optimizer="adam",
-                     loss="categorical_crossentropy",
-                     metrics=["accuracy"])
-    ml_model.fit({
-        "input1": images,
-        "input2": liner_fetures
-    },
-        labels,
-        epochs=50,
-        batch_size=64,
-        validation_split=0.2)
+    df = pd.read_csv(source_features)
+
+    labels = to_categorical(df["class"].values)
+    weights = calc_label_weights(np.argmax(labels, axis=1))
+    images = load_images(
+        map(lambda x: project_dir / "data" / "img" / f"{x}.png", df["accession"]))
+    seq_lens = df["seq_len"].values.reshape([-1, 1])
+    n_class = len(set(np.argmax(labels, axis=1)))
+
+    ml_model = model.construct_model(n_class)
+
+    model.show_model(ml_model, "model.png")
+
+    (train_images, test_images, train_seq_lens, test_seq_lens, train_labels,
+     test_labels) = train_test_split(images, seq_lens, labels)
+
+    csv_log = CSVLogger("logger.csv")
+    history = History()
+    ml_model.compile(loss="categorical_crossentropy", optimizer=Adam(), metrics=["acc"])
+    history = ml_model.fit([train_images, train_seq_lens],
+                           train_labels,
+                           epochs=50,
+                           class_weight=weights)
+    visualize.visualize_history(history.history, "test", project_dir)
