@@ -3,13 +3,14 @@
 import sys
 from PIL import Image
 from . import model, visualize
+import json
 import sklearn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import load_img
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import CSVLogger, History
+from tensorflow.keras.callbacks import CSVLogger, History, TensorBoard
 from sklearn.utils.class_weight import compute_class_weight
 from pathlib import Path
 import numpy as np
@@ -18,6 +19,24 @@ import yaml
 
 from typing import Iterable, Optional
 from os import PathLike
+
+import datetime
+
+project_dir = Path(__file__).resolve().parents[3]
+
+
+def logdir(root: PathLike) -> Path:
+    """Make logdir and return it.
+
+    Args:
+
+    Returns:
+        Path: logdir
+    """
+    now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+    logdir = Path(root) / now
+    logdir.mkdir(parents=True, exist_ok=True)
+    return logdir
 
 
 def calc_label_weights(labels: np.ndarray, option: Optional[str] = None) -> dict:
@@ -44,24 +63,6 @@ def calc_label_weights(labels: np.ndarray, option: Optional[str] = None) -> dict
         return {i: weight for i, weight in enumerate(weights)}
 
 
-def load_data(filename: PathLike):
-    """csvから特徴量を読み込む.
-
-    Args:
-        filename (PathLike): path to csv file.
-    """
-    table = pd.read_csv(filename, delimiter=",").to_numpy()
-    names, classes, pathes, n_len, rate_a, rate_t, rate_g, rate_c = np.hsplit(
-        table, table.shape[1])
-
-    def _to1dim(arr: np.ndarray) -> np.ndarray:
-        return arr.reshape(-1)
-
-    return tuple(
-        _to1dim(x)
-        for x in (names, classes, pathes, n_len, rate_a, rate_t, rate_g, rate_t))
-
-
 def to_categorical(labels: np.ndarray) -> np.ndarray:
     """labelをone-hotなラベルに変更する
     labelの数値はラベルの出現数の昇順になる
@@ -74,19 +75,20 @@ def to_categorical(labels: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray:
     """
-    def _get_sorted_class(classes: np.ndarray) -> np.ndarray:
-        """昇順でソートしたユニークな配列を返す
 
-        Args:
-            classes (np.ndarray): 対象のnumpy配列
-
-        Returns:
-            np.ndarray:
-        """
-        cl, counts = np.unique(classes, return_counts=True)
-        cl_with_counts = np.stack([cl, counts], axis=1)
-        sorted_classes = cl_with_counts[np.argsort(cl_with_counts[:, 1])]
-        return sorted_classes[:, 0]
+    # def _get_sorted_class(classes: np.ndarray) -> np.ndarray:
+    #     """昇順でソートしたユニークな配列を返す
+    #
+    #     Args:
+    #         classes (np.ndarray): 対象のnumpy配列
+    #
+    #     Returns:
+    #         np.ndarray:
+    #     """
+    #     cl, counts = np.unique(classes, return_counts=True)
+    #     cl_with_counts = np.stack([cl, counts], axis=1)
+    #     sorted_classes = cl_with_counts[np.argsort(cl_with_counts[:, 1])]
+    #     return sorted_classes[:, 0]
 
     def _label_to_number(labels: np.ndarray, uniq: np.ndarray) -> np.ndarray:
         """ユニークな配列を基準に数値の配列を返す
@@ -101,12 +103,27 @@ def to_categorical(labels: np.ndarray) -> np.ndarray:
         numbers = np.array([np.where(ll == uniq) for ll in labels])
         return numbers
 
-    uniq = _get_sorted_class(labels)
+    uniq = get_sorted_class(labels)
     numerical_labels = _label_to_number(labels, uniq)
     if not numerical_labels.ndim == 1:
         numerical_labels = numerical_labels.flatten()
     one_hot = np.identity(np.max(numerical_labels) + 1)[numerical_labels]
     return one_hot
+
+
+def get_sorted_class(classes: np.ndarray) -> np.ndarray:
+    """昇順でソートしたユニークな配列を返す
+
+    Args:
+        classes (np.ndarray): 対象のnumpy配列
+
+    Returns:
+        np.ndarray:
+    """
+    cl, counts = np.unique(classes, return_counts=True)
+    cl_with_counts = np.stack([cl, counts], axis=1)
+    sorted_classes = cl_with_counts[np.argsort(cl_with_counts[:, 1])]
+    return sorted_classes[:, 0]
 
 
 def load_images(pathes: Iterable[PathLike]) -> np.ndarray:
@@ -122,34 +139,100 @@ def load_images(pathes: Iterable[PathLike]) -> np.ndarray:
                      for p in pathes])
 
 
+# def label_to_rester_number(labels: np.ndarray, roster: dict):
+#     for i, label in enumerate(labels):
+#         if label in roster["no1"]:
+#             labels[i] = 0
+#         elif label in roster["no2"]:
+#             labels[i] = 1
+#         elif label in roster["no3"]:
+#             labels[i] = 2
+#         else:
+#             labels[i] = 3
+#     return labels
+#
+#
+# def extract_df(df, use_roster, roster) -> pd.DataFrame:
+#     if use_roster == "all":
+#         return df
+#     elif use_roster == "to_4":
+#         return df
+#     elif use_roster == "no3":
+#         return df[df["class"].isin(set(roster["no3"]))]
+#     elif use_roster == "no4":
+#         return df[df["class"].isin(set(roster["no4"]))]
+#
+
 if __name__ == "__main__":
-    project_dir = Path(__file__).resolve().parents[3]
+    settings = {
+        "use_weight_method": "log",
+        "use_csv": sys.argv[1],
+    }
+
     source_features = Path(sys.argv[1])
 
     with open(project_dir / "setting.yml") as f:
         config = yaml.safe_load(f)
 
+    dst = Path(config["destination"])
+
+    logdst = logdir(config["log_dst"])
+
     df = pd.read_csv(source_features)
 
     labels = to_categorical(df["class"].values)
-    weights = calc_label_weights(np.argmax(labels, axis=1))
-    images = load_images(
-        map(lambda x: project_dir / "data" / "img" / f"{x}.png", df["accession"]))
+
+    weights = calc_label_weights(np.argmax(labels, axis=1),
+                                 settings["use_weight_method"])
+    images = load_images(map(lambda x: dst / "img" / f"{x}.png", df["accession"]))
     seq_lens = df["seq_len"].values.reshape([-1, 1])
     n_class = len(set(np.argmax(labels, axis=1)))
 
     ml_model = model.construct_model(n_class)
 
-    model.show_model(ml_model, "model.png")
+    model.show_model(ml_model, logdst / "model.png")
 
     (train_images, test_images, train_seq_lens, test_seq_lens, train_labels,
-     test_labels) = train_test_split(images, seq_lens, labels)
+     test_labels) = train_test_split(images,
+                                     seq_lens,
+                                     labels,
+                                     test_size=0.2,
+                                     stratify=labels)
 
-    csv_log = CSVLogger("logger.csv")
+    csv_log = CSVLogger(logdst / "logger.csv")
+    tensor_board = TensorBoard(log_dir=logdst,
+                               write_graph=True,
+                               write_images=True,
+                               histogram_freq=1)
     history = History()
     ml_model.compile(loss="categorical_crossentropy", optimizer=Adam(), metrics=["acc"])
     history = ml_model.fit([train_images, train_seq_lens],
                            train_labels,
+                           validation_data=([test_images, test_seq_lens], test_labels),
                            epochs=50,
+                           callbacks=[csv_log, tensor_board],
                            class_weight=weights)
-    visualize.visualize_history(history.history, "test", project_dir)
+
+    visualize.visualize_history(history.history, "study_log", logdst)
+
+    loss, acc = ml_model.evaluate([test_images, test_seq_lens], test_labels, verbose=1)
+    pred_labels = np.argmax(ml_model.predict([test_images, test_seq_lens]), axis=1)
+    test_labels = np.argmax(test_labels, axis=1)
+
+    visualize.plot_cmx(test_labels,
+                       pred_labels,
+                       get_sorted_class(df["class"].values),
+                       title="cmx",
+                       dst=logdst)
+
+    with open(logdst / "weight.json", "w") as f:
+        json.dump(
+            {
+                str(k): weights[i]
+                for i, k in enumerate(get_sorted_class(df["class"].values))
+            },
+            f,
+            indent=2)
+
+    with open(logdst / "status.json", "w") as f:
+        json.dump(settings, f, indent=2)
