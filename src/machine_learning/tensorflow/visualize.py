@@ -2,10 +2,11 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 import itertools
+import japanize_matplotlib
 import matplotlib
 from os import PathLike
 import os
-from sklearn.metrics import confusin_matrix
+from sklearn.metrics import confusion_matrix
 
 import numpy as np
 import pandas as pd
@@ -47,7 +48,7 @@ def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> Non
 
 
 def plot_cmx(y_true: list, y_pred: list, labels: List[str], title: str, dst: PathLike):
-    cmx = confusin_matrix(y_true, y_pred)
+    cmx = confusion_matrix(y_true, y_pred)
     normalized_cmx = [row / np.sum(row) for row in cmx]
 
     df_cmx = pd.DataFrame(cmx, index=labels, columns=labels)
@@ -67,7 +68,7 @@ def plot_cmx(y_true: list, y_pred: list, labels: List[str], title: str, dst: Pat
 
     # write value in cells
     data = df_cmx.values
-    for y, x in itertools.product(range(data.shape[0], range(data.shape[1]))):
+    for y, x in itertools.product(range(data.shape[0]), range(data.shape[1])):
         if x == y:
             color = "red"
         elif normalized_cmx[y][x] > 0.5:
@@ -77,8 +78,19 @@ def plot_cmx(y_true: list, y_pred: list, labels: List[str], title: str, dst: Pat
         plt.text(x + 0.5,
                  y + 0.5,
                  data[y, x],
-                 horizontalalignment="centet",
+                 horizontalalignment="center",
                  verticalalignment="center",
                  color=color)
-    plt.savefig(Path(dst) / title + ".png")
+    plt.savefig(Path(dst) / (title + ".png"))
     plt.clf()
+
+
+if __name__ == "__main__":
+    import sys
+    import json
+    filename = sys.argv[1]
+    with open(filename) as f:
+        d = json.load(f)
+    project_dit = Path(__file__).resolve().parents[1]
+    title = sys.argv[2]
+    visualize_history(d, title, project_dit)
