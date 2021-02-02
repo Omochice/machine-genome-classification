@@ -22,18 +22,28 @@ def make_roster(df: pd.DataFrame, taxon: str, n_split: int = 4) -> dict:
     # change method huristic to algorizmic
     # counter = Counter(df[taxon])
     all_taxon = set(df[taxon])
-    no_1 = {"Actionopteri"}
+    no_1 = {"Actinopteri"}
     no_2 = {"Insecta"}
-    no_3 = {"Mammalia", "Aves", "Malcostraca"}
+    no_3 = {"Mammalia", "Aves", "Malacostraca"}
     no_4 = all_taxon - no_1 - no_2 - no_3
     d = {
         "all": list(all_taxon),
-        "no1": list(no_1),
-        "no2": list(no_2),
-        "no3": list(no_3),
-        "no4": list(no_4),
+        "group1": list(no_1),
+        "group2": list(no_2),
+        "group3": list(no_3),
+        "group4": list(no_4),
     }
     return d
+
+
+def make_extracted_csv(df: pd.DataFrame, use_set: set, taxon: str) -> pd.DataFrame:
+    return df[df[taxon].isin(use_set)]
+
+
+def make_grouped_csv(df: pd.DataFrame, roster: dict, taxon: str) -> pd.DataFrame:
+    for k, v in roster.items():
+        df = df.replace(v, k)
+    return df
 
 
 if __name__ == "__main__":
@@ -49,5 +59,13 @@ if __name__ == "__main__":
 
     dst = Path(config["destination"]) / "csv" / "formatted.csv"
     df.to_csv(dst)
+    roster = make_roster(df, config["focus_rank"])
     with open(Path(config["destination"]) / "json" / "roster.json", "w") as f:
-        json.dump(make_roster(df, config["focus_rank"]), f, indent=2)
+        json.dump(roster, f, indent=2)
+
+    for group_name in map(lambda x: f"group{x}", range(1, 5)):
+        make_extracted_csv(df, set(roster[group_name]),
+                           taxon="class").to_csv(dst.parent / f"{group_name}.csv")
+
+    roster.pop("all")
+    make_grouped_csv(df, roster, taxon="class").to_csv(dst.parent / "to_4.csv")
