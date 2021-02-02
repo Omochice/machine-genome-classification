@@ -20,6 +20,8 @@ seaborn = "*"
 sklearn = "*"
 tensorflow = "==2.4.0"
 pydotplus = "*"
+japanize-matplotlib = "*"
+ptipython = "*"
 
 [requires]
 python_version = "3.8"
