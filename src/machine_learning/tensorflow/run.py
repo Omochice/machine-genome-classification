@@ -5,7 +5,7 @@ from PIL import Image
 from . import model, visualize
 import json
 import sklearn
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import load_img
@@ -139,6 +139,13 @@ def load_images(pathes: Iterable[PathLike]) -> np.ndarray:
                      for p in pathes])
 
 
+def normalize(seq_lens: np.ndarray, sigma: int = 0.3) -> np.ndarray:
+    average = np.mean(seq_lens / 1000)
+    rst = np.vectorize(lambda x: np.exp(-1 * (((average - x)**2) / (2 * sigma**2))))(
+        seq_lens / 1000)
+    return rst
+
+
 # def label_to_rester_number(labels: np.ndarray, roster: dict):
 #     for i, label in enumerate(labels):
 #         if label in roster["no1"]:
@@ -167,6 +174,8 @@ if __name__ == "__main__":
     settings = {
         "use_weight_method": "log",
         "use_csv": sys.argv[1],
+        "normalize_seq_len": True,
+        "KFold": 5
     }
 
     source_features = Path(sys.argv[1])
@@ -186,53 +195,66 @@ if __name__ == "__main__":
                                  settings["use_weight_method"])
     images = load_images(map(lambda x: dst / "img" / f"{x}.png", df["accession"]))
     seq_lens = df["seq_len"].values.reshape([-1, 1])
+    if settings["normalize_seq_len"]:
+        seq_lens = normalize(seq_lens)
     n_class = len(set(np.argmax(labels, axis=1)))
 
-    ml_model = model.construct_model(n_class)
+    study_log = {}
+    skf = StratifiedKFold(settings["KFold"])
+    for i, (data_index, test_index) in enumerate(skf.split(images, df["class"].values),
+                                                 1):
+        trial_dst = logdst / f"trial_{i}"
+        trial_dst.mkdir()
+        ml_model = model.construct_model(n_class)
 
-    model.show_model(ml_model, logdst / "model.png")
+        model.show_model(ml_model, trial_dst / "model.png")
 
-    (train_images, test_images, train_seq_lens, test_seq_lens, train_labels,
-     test_labels) = train_test_split(images,
-                                     seq_lens,
-                                     labels,
-                                     test_size=0.2,
-                                     stratify=labels)
+        (train_images, test_images, train_seq_lens, test_seq_lens, train_labels,
+         test_labels) = train_test_split(images[data_index],
+                                         seq_lens[data_index],
+                                         labels[data_index],
+                                         test_size=0.2,
+                                         stratify=labels[data_index])
 
-    csv_log = CSVLogger(logdst / "logger.csv")
-    tensor_board = TensorBoard(log_dir=logdst,
-                               write_graph=True,
-                               write_images=True,
-                               histogram_freq=1)
-    history = History()
-    ml_model.compile(loss="categorical_crossentropy", optimizer=Adam(), metrics=["acc"])
-    history = ml_model.fit([train_images, train_seq_lens],
-                           train_labels,
-                           validation_data=([test_images, test_seq_lens], test_labels),
-                           epochs=50,
-                           callbacks=[csv_log, tensor_board],
-                           class_weight=weights)
+        csv_log = CSVLogger(trial_dst / "logger.csv")
+        tensor_board = TensorBoard(log_dir=trial_dst,
+                                   write_graph=True,
+                                   write_images=True,
+                                   histogram_freq=1)
+        history = History()
+        ml_model.compile(loss="categorical_crossentropy",
+                         optimizer=Adam(),
+                         metrics=["acc"])
+        history = ml_model.fit([train_images, train_seq_lens],
+                               train_labels,
+                               validation_data=([test_images,
+                                                 test_seq_lens], test_labels),
+                               epochs=50,
+                               callbacks=[csv_log, tensor_board],
+                               class_weight=weights)
 
-    visualize.visualize_history(history.history, "study_log", logdst)
+        visualize.visualize_history(history.history, "study_log", trial_dst)
 
-    loss, acc = ml_model.evaluate([test_images, test_seq_lens], test_labels, verbose=1)
-    pred_labels = np.argmax(ml_model.predict([test_images, test_seq_lens]), axis=1)
-    test_labels = np.argmax(test_labels, axis=1)
+        loss, acc = ml_model.evaluate([test_images, test_seq_lens],
+                                      test_labels,
+                                      verbose=1)
+        pred_labels = np.argmax(ml_model.predict([test_images, test_seq_lens]), axis=1)
+        test_labels = np.argmax(test_labels, axis=1)
 
-    visualize.plot_cmx(test_labels,
-                       pred_labels,
-                       get_sorted_class(df["class"].values),
-                       title="cmx",
-                       dst=logdst)
+        visualize.plot_cmx(test_labels,
+                           pred_labels,
+                           get_sorted_class(df["class"].values),
+                           title="cmx",
+                           dst=trial_dst)
 
-    with open(logdst / "weight.json", "w") as f:
-        json.dump(
-            {
-                str(k): weights[i]
-                for i, k in enumerate(get_sorted_class(df["class"].values))
-            },
-            f,
-            indent=2)
+        with open(trial_dst / "weight.json", "w") as f:
+            json.dump(
+                {
+                    str(k): weights[i]
+                    for i, k in enumerate(get_sorted_class(df["class"].values))
+                },
+                f,
+                indent=2)
 
     with open(logdst / "status.json", "w") as f:
         json.dump(settings, f, indent=2)
