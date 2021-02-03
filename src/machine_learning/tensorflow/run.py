@@ -12,6 +12,7 @@ from tensorflow.keras.preprocessing.image import load_img
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import CSVLogger, History, TensorBoard
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.metrics import classification_report
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -54,13 +55,19 @@ def calc_label_weights(labels: np.ndarray, option: Optional[str] = None) -> dict
 
     weights = compute_class_weight("balanced", np.unique(labels), labels)
     n_label_type = len(weights)
+    bin_count = np.bincount(labels)
+    n_label = len(labels)
     if option == "log":
-        return {
-            i: weight
-            for i, weight in enumerate(-np.log(1 / (n_label_type * weights)))
-        }
+        return {i: weight for i, weight in enumerate(-np.log(bin_count / n_label))}
     else:
-        return {i: weight for i, weight in enumerate(weights)}
+        return {i: weight for i, weight in enumerate(bin_count / n_label)}
+    # if option == "log":
+    #     return {
+    #         i: weight
+    #         for i, weight in enumerate(-np.log(1 / (n_label_type * weights)))
+    #     }
+    # else:
+    #     return {i: weight for i, weight in enumerate(weights)}
 
 
 def to_categorical(labels: np.ndarray) -> np.ndarray:
@@ -201,8 +208,8 @@ if __name__ == "__main__":
 
     study_log = {}
     skf = StratifiedKFold(settings["KFold"])
-    for i, (data_index, test_index) in enumerate(skf.split(images, df["class"].values),
-                                                 1):
+    row_labels = df["class"].values
+    for i, (data_index, test_index) in enumerate(skf.split(images, row_labels), 1):
         trial_dst = logdst / f"trial_{i}"
         trial_dst.mkdir()
         ml_model = model.construct_model(n_class)
@@ -210,15 +217,17 @@ if __name__ == "__main__":
         model.show_model(ml_model, trial_dst / "model.png")
 
         (train_images, test_images, train_seq_lens, test_seq_lens, train_labels,
-         test_labels) = train_test_split(images[data_index],
-                                         seq_lens[data_index],
-                                         labels[data_index],
-                                         test_size=0.2,
-                                         stratify=labels[data_index])
+         test_labels, _,
+         test_row_labels) = train_test_split(images[data_index],
+                                             seq_lens[data_index],
+                                             labels[data_index],
+                                             row_labels[data_index],
+                                             test_size=0.2,
+                                             stratify=labels[data_index])
 
         csv_log = CSVLogger(trial_dst / "logger.csv")
         tensor_board = TensorBoard(log_dir=trial_dst,
-                                   write_graph=True,
+                                   write_graph=False,
                                    write_images=True,
                                    histogram_freq=1)
         history = History()
@@ -232,6 +241,7 @@ if __name__ == "__main__":
                                epochs=50,
                                callbacks=[csv_log, tensor_board],
                                class_weight=weights)
+        study_log[f"trial_{i}"] = history.history.copy()
 
         visualize.visualize_history(history.history, "study_log", trial_dst)
 
@@ -247,14 +257,21 @@ if __name__ == "__main__":
                            title="cmx",
                            dst=trial_dst)
 
-        with open(trial_dst / "weight.json", "w") as f:
-            json.dump(
-                {
-                    str(k): weights[i]
-                    for i, k in enumerate(get_sorted_class(df["class"].values))
-                },
-                f,
-                indent=2)
+        with open(trial_dst / "report.txt", "w") as f:
+            print(classification_report(test_labels,
+                                        pred_labels,
+                                        target_names=test_row_labels,
+                                        zero_division=0),
+                  file=f)
+
+    with open(logdst / "weight.json", "w") as f:
+        json.dump(
+            {
+                str(k): weights[i]
+                for i, k in enumerate(get_sorted_class(df["class"].values))
+            },
+            f,
+            indent=2)
 
     with open(logdst / "status.json", "w") as f:
         json.dump(settings, f, indent=2)
