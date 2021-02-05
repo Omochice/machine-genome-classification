@@ -6,7 +6,7 @@ import japanize_matplotlib
 import matplotlib
 from os import PathLike
 import os
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 
 import numpy as np
 import pandas as pd
@@ -20,8 +20,12 @@ matplotlib.use("Agg")
 def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> None:
     fig, (axL, axR) = plt.subplots(ncols=2, figsize=(10, 4))
 
-    axL.plot(history["acc"], "o-", label="Train accuracy")
-    axL.plot(history["val_acc"], "o-", label="Validation accuracy")
+    axL.plot(history.get("acc", history.get("accuracy", None)),
+             "o-",
+             label="Train accuracy")
+    axL.plot(history.get("val_acc", history.get("val_accuracy")),
+             "o-",
+             label="Validation accuracy")
     axL.set_title("Accuracy")
     axL.set_xlabel("Epoch")
     axL.set_ylabel("Accuracy")
