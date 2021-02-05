@@ -2,16 +2,12 @@
 
 import sys
 from PIL import Image
-from . import model, visualize
+from . import model, visualize, calc_loss_weight, focal_loss
 import json
-import sklearn
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import load_img
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import CSVLogger, History, TensorBoard
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import classification_report
 from pathlib import Path
 import numpy as np
@@ -40,36 +36,6 @@ def logdir(root: PathLike) -> Path:
     return logdir
 
 
-def calc_label_weights(labels: np.ndarray, option: Optional[str] = None) -> dict:
-    """calc weight for imbalanced data.
-
-    Args:
-        labels (np.ndarray): labels. ex) [0, 1, 1, 1, ...]
-        option (Optional[str]): select type option. in {None, "log"}
-    Returns:
-        dict: number to weight. ex) {0: 30, 1: 5, 2: 0.5}
-    """
-    if option not in {None, "log"}:
-        print("Argment 'option' must be in {None, 'log'}")
-        sys.exit(1)
-
-    weights = compute_class_weight("balanced", np.unique(labels), labels)
-    n_label_type = len(weights)
-    bin_count = np.bincount(labels)
-    n_label = len(labels)
-    if option == "log":
-        return {i: weight for i, weight in enumerate(-np.log(bin_count / n_label))}
-    else:
-        return {i: weight for i, weight in enumerate(bin_count / n_label)}
-    # if option == "log":
-    #     return {
-    #         i: weight
-    #         for i, weight in enumerate(-np.log(1 / (n_label_type * weights)))
-    #     }
-    # else:
-    #     return {i: weight for i, weight in enumerate(weights)}
-
-
 def to_categorical(labels: np.ndarray) -> np.ndarray:
     """labelをone-hotなラベルに変更する
     labelの数値はラベルの出現数の昇順になる
@@ -82,21 +48,6 @@ def to_categorical(labels: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray:
     """
-
-    # def _get_sorted_class(classes: np.ndarray) -> np.ndarray:
-    #     """昇順でソートしたユニークな配列を返す
-    #
-    #     Args:
-    #         classes (np.ndarray): 対象のnumpy配列
-    #
-    #     Returns:
-    #         np.ndarray:
-    #     """
-    #     cl, counts = np.unique(classes, return_counts=True)
-    #     cl_with_counts = np.stack([cl, counts], axis=1)
-    #     sorted_classes = cl_with_counts[np.argsort(cl_with_counts[:, 1])]
-    #     return sorted_classes[:, 0]
-
     def _label_to_number(labels: np.ndarray, uniq: np.ndarray) -> np.ndarray:
         """ユニークな配列を基準に数値の配列を返す
 
@@ -137,7 +88,7 @@ def load_images(pathes: Iterable[PathLike]) -> np.ndarray:
     """画像のパスが格納されたnumpy配列から画素値の配列を得る
 
     Args:
-        pathes (np.ndarray): 画像へのパスが格納されたnumpt配列
+        pathes (np.ndarray): 画像へのパスが格納されたnumpy配列
 
     Returns:
         np.ndarray:
@@ -153,36 +104,13 @@ def normalize(seq_lens: np.ndarray, sigma: int = 0.3) -> np.ndarray:
     return rst
 
 
-# def label_to_rester_number(labels: np.ndarray, roster: dict):
-#     for i, label in enumerate(labels):
-#         if label in roster["no1"]:
-#             labels[i] = 0
-#         elif label in roster["no2"]:
-#             labels[i] = 1
-#         elif label in roster["no3"]:
-#             labels[i] = 2
-#         else:
-#             labels[i] = 3
-#     return labels
-#
-#
-# def extract_df(df, use_roster, roster) -> pd.DataFrame:
-#     if use_roster == "all":
-#         return df
-#     elif use_roster == "to_4":
-#         return df
-#     elif use_roster == "no3":
-#         return df[df["class"].isin(set(roster["no3"]))]
-#     elif use_roster == "no4":
-#         return df[df["class"].isin(set(roster["no4"]))]
-#
-
 if __name__ == "__main__":
     settings = {
         "use_weight_method": "log",
         "use_csv": sys.argv[1],
         "normalize_seq_len": True,
-        "KFold": 5
+        "KFold": 5,
+        "description": "seq_lenを標準化する"
     }
 
     source_features = Path(sys.argv[1])
@@ -198,32 +126,32 @@ if __name__ == "__main__":
 
     labels = to_categorical(df["class"].values)
 
-    weights = calc_label_weights(np.argmax(labels, axis=1),
-                                 settings["use_weight_method"])
+    weights = calc_loss_weight.calc_class_weight(np.argmax(labels, axis=1),
+                                                 settings["use_weight_method"])
     images = load_images(map(lambda x: dst / "img" / f"{x}.png", df["accession"]))
     seq_lens = df["seq_len"].values.reshape([-1, 1])
     if settings["normalize_seq_len"]:
-        seq_lens = normalize(seq_lens)
+        scaler = StandardScaler()
+        scaler.fit_transform(seq_lens)
+        settings["seq_len_mean"] = scaler.mesn_
+        settings["seq_len_var"] = scaler.var_
+
     n_class = len(set(np.argmax(labels, axis=1)))
 
     study_log = {}
     skf = StratifiedKFold(settings["KFold"])
     row_labels = df["class"].values
-    for i, (data_index, test_index) in enumerate(skf.split(images, row_labels), 1):
+    for i, (train_index, test_index) in enumerate(skf.split(images, row_labels), 1):
         trial_dst = logdst / f"trial_{i}"
         trial_dst.mkdir()
         ml_model = model.construct_model(n_class)
 
         model.show_model(ml_model, trial_dst / "model.png")
 
-        (train_images, test_images, train_seq_lens, test_seq_lens, train_labels,
-         test_labels, _,
-         test_row_labels) = train_test_split(images[data_index],
-                                             seq_lens[data_index],
-                                             labels[data_index],
-                                             row_labels[data_index],
-                                             test_size=0.2,
-                                             stratify=labels[data_index])
+        train_images, test_images = images[train_index], images[test_index]
+        train_labels, test_labels = labels[train_index], labels[test_index]
+        train_seq_lens, test_seq_lens = seq_lens[train_index], seq_lens[test_index]
+        test_row_labels = row_labels[test_index]
 
         csv_log = CSVLogger(trial_dst / "logger.csv")
         tensor_board = TensorBoard(log_dir=trial_dst,
@@ -231,9 +159,19 @@ if __name__ == "__main__":
                                    write_images=True,
                                    histogram_freq=1)
         history = History()
-        ml_model.compile(loss="categorical_crossentropy",
-                         optimizer=Adam(),
-                         metrics=["acc"])
+
+        if n_class == 2:
+            ml_model.compile(loss=[focal_loss.binary_focal_loss(alpha=.25, gamma=2)],
+                             metrics=["accuracy"],
+                             optimizer=Adam())
+        else:
+            ml_model.compile(loss=[
+                focal_loss.categorical_focal_loss(alpha=[[.25 for _ in range(n_class)]],
+                                                  gamma=2)
+            ],
+                             metrics=["accuracy"],
+                             optimizer=Adam())
+
         history = ml_model.fit([train_images, train_seq_lens],
                                train_labels,
                                validation_data=([test_images,
@@ -260,7 +198,8 @@ if __name__ == "__main__":
         with open(trial_dst / "report.txt", "w") as f:
             print(classification_report(test_labels,
                                         pred_labels,
-                                        target_names=test_row_labels,
+                                        target_names=get_sorted_class(
+                                            df["class"].values),
                                         zero_division=0),
                   file=f)
 
@@ -274,4 +213,4 @@ if __name__ == "__main__":
             indent=2)
 
     with open(logdst / "status.json", "w") as f:
-        json.dump(settings, f, indent=2)
+        json.dump(settings, f, indent=2, ensure_ascii=False)
