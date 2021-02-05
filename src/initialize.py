@@ -18,7 +18,8 @@ def init_settig(setting: Path) -> None:
         "graph_pix": 192,
         "priority": priority,
         "focus_rank": "class",
-        "use_limit": 5
+        "use_limit": 5,
+        "log_dst": str(project_dir / "log")
     }
     with open(setting, "w") as f:
         yaml.safe_dump(template, f)
