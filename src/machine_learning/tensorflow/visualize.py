@@ -1,23 +1,25 @@
 import matplotlib.pyplot as plt
 from pathlib import Path
+from PIL import Image
 
 import itertools
 import japanize_matplotlib
 import matplotlib
 from os import PathLike
 import os
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from typing import List
+from typing import Iterable, List
 
 matplotlib.use("Agg")
 
 
 def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> None:
+    sns.set()
     fig, (axL, axR) = plt.subplots(ncols=2, figsize=(10, 4))
 
     axL.plot(history.get("acc", history.get("accuracy", None)),
@@ -47,7 +49,7 @@ def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> Non
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
 
-    fig.savefig(os.path.join(dst, f"{title}.png"))
+    fig.savefig(os.path.join(dst, f"{title}.png"), bbox_inches="tight", pad_inches=0.05)
     fig.clf()
 
 
@@ -66,9 +68,9 @@ def plot_cmx(y_true: list, y_pred: list, labels: List[str], title: str, dst: Pat
                 cmap="Blues",
                 vmin=0,
                 vmax=1.0)
-    plt.title("真のラベルと予測ラベルの対応")
-    plt.xlabel("予測されたラベル")
-    plt.ylabel("真のラベル")
+    plt.title("正解の綱と予測した綱の対応")
+    plt.xlabel("予測した綱")
+    plt.ylabel("正解の綱")
 
     # write value in cells
     data = df_cmx.values
@@ -85,8 +87,50 @@ def plot_cmx(y_true: list, y_pred: list, labels: List[str], title: str, dst: Pat
                  horizontalalignment="center",
                  verticalalignment="center",
                  color=color)
-    plt.savefig(Path(dst) / (title + ".png"))
+    plt.savefig(Path(dst) / (title + ".png"), bbox_inches="tight", pad_inches=0.05)
     plt.clf()
+
+
+def visualize_all_cmxs(rst: list, cmx_pathes: Iterable[PathLike],
+                       dst: PathLike) -> None:
+    images = []
+    dst = Path(dst)
+    # make table
+    d = {}
+    for row in rst:
+        for k, v in row.items():
+            d[k] = {kk: f"{vv:.3f}" for kk, vv in v.items()}
+    df = pd.DataFrame.from_dict(d, orient="index")
+
+    # concate table and cmxs
+    for i, img_path in enumerate(cmx_pathes, 1):
+        fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(10, 4))
+        ax1.axis("off")
+        tb = ax1.table(cellText=df.values,
+                       colLabels=df.columns,
+                       rowLabels=df.index,
+                       loc="center",
+                       bbox=[0, 0, 1, 1])
+        for j in range(len(df.columns)):
+            tb[0, j].set_facecolor('#363636')
+            tb[0, j].set_text_props(color='w')
+            tb[i, j].set_facecolor("tomato")
+
+        ax2.axis("off")
+        img = plt.imread(img_path)
+        ax2.imshow(img)
+        filedst = dst / f".tmp_{i}.png"
+        fig.savefig(filedst, bbox_inches="tight", pad_inches=0.05)
+        images.append(Image.open(filedst))
+        os.remove(filedst)
+
+    # make gif animation
+    images[0].save(dst / "log.gif",
+                   format="gif",
+                   save_all=True,
+                   append_images=images[1:],
+                   duration=1000,
+                   loop=0)
 
 
 if __name__ == "__main__":
