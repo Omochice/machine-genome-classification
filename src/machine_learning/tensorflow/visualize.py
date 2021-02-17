@@ -3,7 +3,6 @@ from pathlib import Path
 from PIL import Image
 
 import itertools
-import japanize_matplotlib
 import matplotlib
 from os import PathLike
 import os
@@ -14,12 +13,13 @@ import pandas as pd
 import seaborn as sns
 
 from typing import Iterable, List
+sns.set()
+import japanize_matplotlib
 
 matplotlib.use("Agg")
 
 
 def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> None:
-    sns.set()
     fig, (axL, axR) = plt.subplots(ncols=2, figsize=(10, 4))
 
     axL.plot(history.get("acc", history.get("accuracy", None)),
@@ -28,6 +28,8 @@ def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> Non
     axL.plot(history.get("val_acc", history.get("val_accuracy")),
              "o-",
              label="Validation accuracy")
+    if "f1score" in history:
+        axL.plot(history["f1score"], "*-", label="F1 score")
     axL.set_title("Accuracy")
     axL.set_xlabel("Epoch")
     axL.set_ylabel("Accuracy")
@@ -42,6 +44,9 @@ def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> Non
     axR.set_ylabel("Loss")
     axR.grid(True)
     axR.legend(bbox_to_anchor=(0, 0), loc="lower left", borderaxespad=0)
+
+    # TODO
+    # 3つ目のグラフの作成
 
     if title == "":
         title = "model_history"
