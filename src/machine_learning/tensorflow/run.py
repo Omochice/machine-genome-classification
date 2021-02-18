@@ -111,7 +111,8 @@ def main(settings: dict, log_dst: PathLike):
     with open(project_dir / "setting.yml") as f:
         config = yaml.safe_load(f)
 
-    dst = Path(config["destination"])
+    img_dst = Path(config["destination"]) / "img"
+    model_dst = Path(config["log_dst"]) / ".tmp_models"
 
     logdst = logdir(log_dst)
 
@@ -122,7 +123,7 @@ def main(settings: dict, log_dst: PathLike):
 
     weights = calc_loss_weight.calc_class_weight(np.argmax(labels, axis=1),
                                                  settings["use_weight_method"])
-    images = load_images(map(lambda x: dst / "img" / f"{x}.png", df["accession"]))
+    images = load_images(map(lambda x: img_dst / f"{x}.png", df["accession"]))
     seq_lens = df["seq_len"].values.reshape([-1, 1])
     at_gc_rates = df["at_gc_rate"].values.reshape([-1, 1])
     atgc = np.stack([df["A"].values, df["T"].values, df["G"].values, df["T"].values]).T
@@ -180,7 +181,7 @@ def main(settings: dict, log_dst: PathLike):
         trial_dst.mkdir()
         ml_model = model.construct_model(n_class)
 
-        model.show_model(ml_model, trial_dst / "model.pdf")
+        model.show_model(ml_model, model_dst / "model.pdf")
         model_to_dot(ml_model, show_shapes=True).write(str(trial_dst / "model.svg"),
                                                        format="svg")
 
@@ -201,7 +202,7 @@ def main(settings: dict, log_dst: PathLike):
             ml_model, [test_images, test_seq_lens, test_atgc, test_at_gc_rates],
             test_labels)
         history = History()
-        checkpoint = ModelCheckpoint(logdst.parent / ".tmp_models" /
+        checkpoint = ModelCheckpoint(Path(config["log_dst"]) / ".tmp_models" /
                                      "model_{epoch:02d}.hdf5",
                                      monitor="val_loss",
                                      save_weights_only=True)
@@ -321,12 +322,23 @@ if __name__ == "__main__":
         },
         "KFold": 5,
         "batch": 32,
-        "description": "v1 逆数focal AT/GCのみ",
+        "description": "v1 逆数focal seq len 最良モデルでのテスト",
         "results": [],
         "average": {}
     }
     with open(project_dir / "setting.yml") as f:
         config = yaml.safe_load(f)
     log_dst = logdir(config["log_dst"])
+    main(settings, log_dst)
 
+    settings["seq_len"]["enable"] = False
+    settings["atgc_rate"]["enable"] = True
+    settings["description"] = "v1 逆数focal atgc_rate 最良モデルでのテスト"
+    settings["results"] = []
+    main(settings, log_dst)
+
+    settings["atgc_rate"]["enable"] = False
+    settings["atgc"]["enable"] = True
+    settings["description"] = "v1 逆数focal atgc 最良モデルでのテスト"
+    settings["results"] = []
     main(settings, log_dst)
