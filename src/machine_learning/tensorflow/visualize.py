@@ -30,12 +30,17 @@ def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> Non
              label="Validation accuracy")
     if "f1score" in history:
         axL.plot(history["f1score"], "*-", label="F1 score")
-    axL.set_title("Accuracy")
+        axL.set_title("Accuracy and F1 score")
+        axL.set_ylabel("value of score")
+    else:
+        axL.set_title("Accuracy")
+        axL.set_ylabel("Accuracy")
     axL.set_xlabel("Epoch")
-    axL.set_ylabel("Accuracy")
     axL.set_ylim(0, 1)
     axL.grid(True)
-    axL.legend(bbox_to_anchor=(0, 0), loc="lower left", borderaxespad=0)
+    # axL.legend(bbox_to_anchor=(0, 0), loc="lower left", borderaxespad=0)
+    axL.legend(bbox_to_ancher=(1, -0.1), loc="upper right", borderaxespad=0)
+    # axL.legend(loc="best")
 
     axR.plot(history["loss"], "o-", label="Train loss")
     axR.plot(history["val_loss"], "o-", label="Validation loss")
@@ -43,7 +48,9 @@ def visualize_history(history: dict, title: str = "", dst: PathLike = "") -> Non
     axR.set_xlabel("Epoch")
     axR.set_ylabel("Loss")
     axR.grid(True)
-    axR.legend(bbox_to_anchor=(0, 0), loc="lower left", borderaxespad=0)
+    # axR.legend(bbox_to_anchor=(0, 0), loc="lower left", borderaxespad=0)
+    axL.legend(bbox_to_ancher=(1, -0.1), loc="upper right", borderaxespad=0)
+    # axR.legend(loc="best")
 
     # TODO
     # 3つ目のグラフの作成
