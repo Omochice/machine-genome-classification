@@ -9,6 +9,7 @@ ipython = "*"
 pytest = "*"
 jupyterlab = "*"
 jupyter-lsp = "*"
+mypy = "*"
 
 [packages]
 biopython = "*"
@@ -22,6 +23,9 @@ tensorflow = "==2.4.0"
 pydotplus = "*"
 japanize-matplotlib = "*"
 ptipython = "*"
+dill = "*"
+pytab = "*"
+mizlab-tools = {ref = "main", git = "https://github.com/MizLab/mizlab-tools.git"}
 
 [requires]
 python_version = "3.8"
