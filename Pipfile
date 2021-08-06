@@ -1,37 +1,20 @@
 [[source]]
-name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
+name = "pypi"
+
+[packages]
+mizlab-tools = {ref = "main", git = "https://github.com/MizLab/mizlab-tools.git"}
+pandas = "*"
+biopython = "*"
+keras = "*"
+pyyaml = "*"
+matplotlib = "*"
 
 [dev-packages]
 yapf = "*"
-ipython = "*"
-pytest = "*"
-jupyterlab = "*"
-jupyter-lsp = "*"
-mypy = "*"
-
-[packages]
-biopython = "*"
-requests = "*"
-matplotlib = "*"
-pandas = "*"
-pyyaml = "*"
-seaborn = "*"
-sklearn = "*"
-tensorflow = "==2.4.0"
-pydotplus = "*"
-japanize-matplotlib = "*"
-ptipython = "*"
-dill = "*"
-pytab = "*"
-mizlab-tools = {ref = "main", git = "https://github.com/MizLab/mizlab-tools.git"}
+flake8 = "*"
+isort = "*"
 
 [requires]
 python_version = "3.8"
-
-[scripts]
-test = "python -m pytest"
-fetch = "python -m src.data_preparation.fetch"
-gen_img = "python -m src.generate_graph_img.generate_img"
-gen_one_img = "python -m src.generate_graph_img.generate_one"
